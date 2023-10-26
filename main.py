@@ -26,7 +26,11 @@ class Datensatz:
         """
         Alle Klassen der Datensätze müssen mittels der Panda-Bibliothek aus einer CSV Datei ein DataFrame-Objekt generieren. Somit wird diese Methode in der Parent-Klasse definiert.
         """
-        return self.pd_object.read_csv(self.path_to_csv)
+        
+        try:
+            return self.pd_object.read_csv(self.path_to_csv)
+        except Exception as ex:
+            sys.exit("Die CSV Datei konnte nicht geladen werden und der Code wurde abgebrochen")
 
 
 class IdealSatz(Datensatz):
@@ -195,7 +199,10 @@ class TestSatz(Datensatz):
                         
                         data_row = { 'x':x, 'y':y, 'idF':idF }
                         data_row_ds = pd.DataFrame([data_row])
+                        valGraph_ds = valGraph_ds.dropna(axis=1, how='all')
+                        data_row_ds = data_row_ds.dropna(axis=1, how='all')
                         valGraph_ds = pd.concat([valGraph_ds,data_row_ds],axis=0,ignore_index=True)
+                        valGraph_ds = valGraph_ds.astype(valGraph_ds.dtypes)
                         
         valGraph_ds = valGraph_ds.sort_values(by='x')
         if 0: 
@@ -265,10 +272,12 @@ class TestSatz(Datensatz):
                     ax2.plot(x, y, label=f"{entriesToKeep[col]} train")
                     ax2.legend()
                 
-        plt.show()
+        #plt.show()
         return None
         
     
+    
+
 class ProgrammStart:
     
     id_funk_pfad        = 'C:/Users/Michael/OneDrive/IU Fernuni/IU Python/Spyder Quellcode/ideal.csv'
@@ -285,34 +294,55 @@ class ProgrammStart:
         self.test_df            = self.valFunktionen.loadData()
         
         
+
+
+    def datenbankHandler(self,funk_label):
+        ##################################################
+        num_rows = 10
+        num_cols = 5
+        # Create a DataFrame with random data
+        data = np.random.rand(num_rows, num_cols)  # You can use np.random.randint() for integer data
+        columns = ['Column_{}'.format(i) for i in range(num_cols)]
+        df = pd.DataFrame(data, columns=columns)
+        # Display the random DataFrame
+        print(funk_label)
+        ##################################################
         datenbak = 'datenbank.db'
-        verbi = sqlite3.connect(datenbak)
-        cursor = verbi.cursor()
-        
-        
-        cursor.execute('CREATE TABLE IF NOT EXISTS my_table (id INTEGER PRIMARY KEY, name TEXT)')
-        #### hier weiter.,.....
-        verbi.commit()
-        verbi.close()
-
-
-        
-
+        try:
+            verbi = sqlite3.connect(datenbak)
+            cursor = verbi.cursor()
+            df.to_sql('test', verbi, if_exists='replace', index=False)
+            verbi.commit()
+            verbi.close()
+        except sqlite3.Error as er:
+            raise SQLiteError(f'Fehler beim Aufbau der SQLite Datei {e}')
+            
+    
+    def datenbankSpeichern(self,funk_label):
+        try:
+            self.datenbankHandler(funk_label)
+        except self.SQLiteError as e:
+            print(f"f'Fehler beim Aufbau der SQLite Datei {e}'")
+            
     
     def berechnungenDurchführen(self):        
-        trainErgebnis               = self.trainFunktionen.train(self.ideal_df)
-        if 0: print(trainErgebnis)
-        self.bestenFunktionen       = self.trainFunktionen.findbestFits(trainErgebnis)
-        if 0: print(self.bestenFunktionen)
-        self.valFunktionen.validieren(trainErgebnis,self.bestenFunktionen,self.ideal_df, self.test_df,self.train_df)
-        #####################################################################################################################################
+        trainErgebnis = self.trainFunktionen.train(self.ideal_df)
         
+        if 0: print(trainErgebnis)
+        
+        self.bestenFunktionen = self.trainFunktionen.findbestFits(trainErgebnis)
+        
+        if 0: print(self.bestenFunktionen)
+        
+        self.valFunktionen.validieren(trainErgebnis,self.bestenFunktionen,self.ideal_df, self.test_df,self.train_df)
+          
         
     def wasSindDieBestenFunktionen(self):
         return self.bestenFunktionen
         
         
-
+        
 
 Programm = ProgrammStart()
 Programm.berechnungenDurchführen()
+Programm.datenbankSpeichern(Programm.bestenFunktionen)
