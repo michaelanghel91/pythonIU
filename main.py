@@ -1,3 +1,8 @@
+"""Dieses Programm wurde für den Kurs 'PROGRAMMIEREN MIT PYTHON' von Michael Anghel entwickelt.
+Datum: Oktober/November 2023
+Zielsetzung: Mit der Hilfe von vier Trainingsfunktionen werden vier ideale Funktionen aus einem anderen Datensatz herausselektiert auf Basis bestimmter Kriterien.  
+"""
+
 import pandas as pd
 import numpy as np
 import math
@@ -8,28 +13,37 @@ import sqlite3
 
 
 class Datensatz:
-    
+    """
+    Diese Klasse dient als Parent-Klasse für die drei unteren Klassen: Test, Ideal, Train. 
+    Alle gemeinsamen Funktionen die sich diese drei Klassen teilen, werden im Rahmen dieser Klasse definiert.
+    """
     def __init__(self,path_to_csv,pd_object):
         self.path_to_csv = path_to_csv
         self.pd_object = pd_object
         
         
     def loadData(self):
+        """
+        Alle Klassen der Datensätze müssen mittels der Panda-Bibliothek aus einer CSV Datei ein DataFrame-Objekt generieren. Somit wird diese Methode in der Parent-Klasse definiert.
+        """
         return self.pd_object.read_csv(self.path_to_csv)
 
 
 class IdealSatz(Datensatz):
     def __init__(self,path_to_csv,pd_object):
         super().__init__(path_to_csv,pd_object)
-        pass
+        
 
-############################################################################################################################
+
 class TrainSatz(Datensatz):
     def __init__(self,path_to_csv,pd_object):
         super().__init__(path_to_csv,pd_object)
-        pass
+        
         
     def train(self, IdealSatz):
+        """
+        Diese Methode sammelt die Train-Funktionen die den idealen Funktionen nahe sind und gibt diese Sammlung als Panda-DataFrame-Objekt zurück.
+        """
         t_set = super().loadData()
         i_set = IdealSatz
         trainErgebnis = pd.DataFrame()
@@ -43,6 +57,9 @@ class TrainSatz(Datensatz):
 
            
     def findClosestFunctions(self,train_set_spalte,ideal_set):
+        """
+        Vergleicht die Train- und ideale Funktion. Es werden äquivalente Punkte subtrahiert und anschließend entlang der ganzen Spalte summiert und quadriert. Desto kleiner der Wert dieses Rechenvorgangs, desto näher die Funktionen.
+        """
         comp_df = pd.DataFrame() 
         pdresults = {} 
         results = {} 
@@ -59,6 +76,9 @@ class TrainSatz(Datensatz):
     
     
     def findbestFits(self, trainErgebnis):
+        """
+        Nachdem die besten Fits gefunden wurden, selektiert diese Funktionen die besten Kanditaten.
+        """
         corresp_table = {}
         for col in trainErgebnis:
             trainErgebnis[col] = pd.to_numeric(trainErgebnis[col],errors='coerce')
@@ -72,11 +92,17 @@ class TrainSatz(Datensatz):
 
 ############################################################################################################################
 class TestSatz(Datensatz):
+    """
+    Diese Klasse beinhalte alle Funktionen des Testdatensatzes. Dieser wird benutzt um die Selektion der besten Fits zu validieren.
+    """
     def __init__(self,path_to_csv,pd_object):
         super().__init__(path_to_csv,pd_object)
         pass
         
     def validieren(self, berechnungen, ergebnis,ideal_df,test_df, train_df):
+        """
+        Die Validierungsfunktion. Sie ruft andere Funktionen die benötigt sind um die Validierungsvorgänge auszuführen. Ebenfalls sammelt sie alle Variabeln die benötigt sind und gibt diese weiter.
+        """
         schnittmenge_df = ideal_df.merge(test_df, on='x', how='inner')
         entriesToKeep = []
         for col,row in ergebnis.items():
@@ -103,6 +129,9 @@ class TestSatz(Datensatz):
         
         
     def abweichungVonIdeal(self,x,ideal_df,train_df,idF,trF):
+        """
+        Gibt Abweichungen für x,y Wertepaare zwischen einer gegebener idealen und Trainingsfunktion.
+        """
         gefundenID = ideal_df['x'].isin([x])
         index = gefundenID[gefundenID].index[0]
         idY = ideal_df.loc[index, idF]
@@ -113,6 +142,9 @@ class TestSatz(Datensatz):
         return maxAbw 
     
     def passendeBereicheHervorheben(self,berech,ideal_df,train_df,ergebnis,test_df): 
+        """
+        Jeder Punkt im Testdatensatz wird analysiert. Falls er zu einer idealen Funktion passt, wird er in einer Variabel gespeichert. Später werden nur diejenige Punkte visualisiert, die tatsächlich einer idealen Funktion nahe standen.
+        """
         ratio = pd.DataFrame()
         found_ideal_functions = []
         matches_col_names = []
@@ -174,10 +206,10 @@ class TestSatz(Datensatz):
         return valGraph_ds
        
     
-    ################################################################################################################################################################################################################################################
-    
-    
     def graphenZeichnen(self, schnittmenge, valGraph_ds,test_df,train_df,ergebnis,ideal_df):
+        """
+        Diese Methode erhält die Ergebnisse aller bisherigen Methoden und erzeugt entsprechende Graphen.
+        """
         # xy = pd.DataFrame()
         ergebnis = {value: key for key, value in ergebnis.items()}
         entriesToKeep = {}
@@ -284,5 +316,3 @@ class ProgrammStart:
 
 Programm = ProgrammStart()
 Programm.berechnungenDurchführen()
-
-
