@@ -276,7 +276,9 @@ class TestSatz(Datensatz):
         return None
         
     
-    
+class SQLiteError(Exception):
+    def __init__(self, nachricht):
+        super().__init__(nachricht)    
 
 class ProgrammStart:
     
@@ -293,48 +295,58 @@ class ProgrammStart:
         self.train_df           = self.trainFunktionen.loadData()
         self.test_df            = self.valFunktionen.loadData()
         
-        
+    def takeDataFromDatabase(self):
+        self.idealeFunktionen    = IdealSatz(self.id_funk_pfad, pd)
+        self.trainFunktionen     = TrainSatz(self.train_funk_pfad, pd)
+        self.valFunktionen       = TestSatz(self.test_funk_pfad, pd)
+        self.ideal_df           = self.idealeFunktionen.loadData()
+        self.train_df           = self.trainFunktionen.loadData()
+        self.test_df            = self.valFunktionen.loadData()
 
 
-    def datenbankHandler(self,funk_label):
-        ##################################################
-        num_rows = 10
-        num_cols = 5
-        # Create a DataFrame with random data
-        data = np.random.rand(num_rows, num_cols)  # You can use np.random.randint() for integer data
-        columns = ['Column_{}'.format(i) for i in range(num_cols)]
-        df = pd.DataFrame(data, columns=columns)
-        # Display the random DataFrame
-        print(funk_label)
-        ##################################################
+    def datenbankHandler(self,funk_ds, table_name):
         datenbak = 'datenbank.db'
         try:
             verbi = sqlite3.connect(datenbak)
             cursor = verbi.cursor()
-            df.to_sql('IUPython', verbi, if_exists='replace', index=False)
+            
+            if table_name == "ideal":
+                funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
+                print(table_name)
+            elif table_name == "train":
+                funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
+                print(table_name)
+            elif table_name == "test":
+                funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
+                print(table_name)
+            elif table_name == "validierung":
+                funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
+                print(table_name)
+            else:
+                table_name = "default"
+                funk_ds.to_sql('default', verbi, if_exists='replace', index=False)         
+                print(table_name)
+                
+                
             verbi.commit()
             verbi.close()
         except sqlite3.Error as er:
             raise SQLiteError(f'Fehler beim Aufbau der SQLite Datei {er}')
             
     
-    def datenbankSpeichern(self,funk_label):
-        try:
-            self.datenbankHandler(funk_label)
-        except self.SQLiteError as e:
-            print(f"f'Fehler beim Aufbau der SQLite Datei {e}'")
+
             
-            
-    def datenbankInhalteAbrufen(self):
+    def datenbankInhalteAbrufen(self,table_name):
         datenbak = 'datenbank.db'
+        df = pd.DataFrame()
         try:
             verbi = sqlite3.connect(datenbak)
-            query = "SELECT * FROM IUPython"
+            query = f"SELECT * FROM {table_name}"
             df = pd.read_sql_query(query,verbi)
-            verbi.close()
+            verbi.close()            
             return df
         except sqlite3.Error as er:
-            raise SQLiteReadError(f'Fehler beim Lesen der SQLite Datei {er}')
+            raise SQLiteError(f'Fehler beim Lesen der SQLite Datei {er}')
     
     def berechnungenDurchführen(self):        
         trainErgebnis = self.trainFunktionen.train(self.ideal_df)
@@ -358,13 +370,19 @@ Programm = ProgrammStart()
 Programm.berechnungenDurchführen()
 
 
- try:
-    Programm.datenbankHandler(Programm.ideal_df)
-    Programm.datenbankHandler(Programm.train_df)
-    Programm.datenbankHandler(Programm.test_df)
-    Programm.datenbankHandler(Programm.ERGEBNISSEEEEEEEEEEEEEEEEE)
-    db_inhalte = Programm.datenbankInhalteAbrufen()
-except (SQLiteError, SQLiteReadError)  as e:
+try:
+    Programm.datenbankHandler(Programm.ideal_df,'ideal')
+    Programm.datenbankHandler(Programm.train_df,'train')
+    Programm.datenbankHandler(Programm.test_df,'test')
+    
+    df1 = Programm.datenbankInhalteAbrufen('ideal')
+    df2 = Programm.datenbankInhalteAbrufen('train')
+    df3 = Programm.datenbankInhalteAbrufen('test')
+    print(df1)
+    print(df2)
+    print(df3)
+    #print(Programm.bestenFunktionen) --> {'train_y1': 'y36_id', 'train_y2': 'y11_id', 'train_y3': 'y2_id', 'train_y4': 'y33_id'}
+except SQLiteError  as e:
     print(f"f'Fehler beim komminizieren mit der der SQLite Datei: {e}'")
 
 
