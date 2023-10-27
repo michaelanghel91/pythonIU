@@ -311,11 +311,11 @@ class ProgrammStart:
         try:
             verbi = sqlite3.connect(datenbak)
             cursor = verbi.cursor()
-            df.to_sql('test', verbi, if_exists='replace', index=False)
+            df.to_sql('IUPython', verbi, if_exists='replace', index=False)
             verbi.commit()
             verbi.close()
         except sqlite3.Error as er:
-            raise SQLiteError(f'Fehler beim Aufbau der SQLite Datei {e}')
+            raise SQLiteError(f'Fehler beim Aufbau der SQLite Datei {er}')
             
     
     def datenbankSpeichern(self,funk_label):
@@ -324,6 +324,17 @@ class ProgrammStart:
         except self.SQLiteError as e:
             print(f"f'Fehler beim Aufbau der SQLite Datei {e}'")
             
+            
+    def datenbankInhalteAbrufen(self):
+        datenbak = 'datenbank.db'
+        try:
+            verbi = sqlite3.connect(datenbak)
+            query = "SELECT * FROM IUPython"
+            df = pd.read_sql_query(query,verbi)
+            verbi.close()
+            return df
+        except sqlite3.Error as er:
+            raise SQLiteReadError(f'Fehler beim Lesen der SQLite Datei {er}')
     
     def berechnungenDurchführen(self):        
         trainErgebnis = self.trainFunktionen.train(self.ideal_df)
@@ -345,4 +356,23 @@ class ProgrammStart:
 
 Programm = ProgrammStart()
 Programm.berechnungenDurchführen()
-Programm.datenbankSpeichern(Programm.bestenFunktionen)
+
+
+ try:
+    Programm.datenbankHandler(Programm.ideal_df)
+    Programm.datenbankHandler(Programm.train_df)
+    Programm.datenbankHandler(Programm.test_df)
+    Programm.datenbankHandler(Programm.ERGEBNISSEEEEEEEEEEEEEEEEE)
+    db_inhalte = Programm.datenbankInhalteAbrufen()
+except (SQLiteError, SQLiteReadError)  as e:
+    print(f"f'Fehler beim komminizieren mit der der SQLite Datei: {e}'")
+
+
+    
+    
+""" 
+    Programm.datenbankSpeichern(Programm.bestenFunktionen) # speichere ideale Funk
+    Programm.datenbankSpeichern(Programm.bestenFunktionen) # speichere test Funk
+    Programm.datenbankSpeichern(Programm.bestenFunktionen) # speichere train Funk
+    Programm.datenbankSpeichern(Programm.bestenFunktionen) # speichere gefundene Funk
+"""
