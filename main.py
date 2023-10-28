@@ -25,8 +25,7 @@ class Datensatz:
     def loadData(self):
         """
         Alle Klassen der Datensätze müssen mittels der Panda-Bibliothek aus einer CSV Datei ein DataFrame-Objekt generieren. Somit wird diese Methode in der Parent-Klasse definiert.
-        """
-        
+        """  
         try:
             return self.pd_object.read_csv(self.path_to_csv)
         except Exception as ex:
@@ -99,6 +98,9 @@ class TestSatz(Datensatz):
     """
     Diese Klasse beinhalte alle Funktionen des Testdatensatzes. Dieser wird benutzt um die Selektion der besten Fits zu validieren.
     """
+    
+    abweichungstabelle = None
+    
     def __init__(self,path_to_csv,pd_object):
         super().__init__(path_to_csv,pd_object)
         pass
@@ -129,6 +131,7 @@ class TestSatz(Datensatz):
                 berech[label] = (schnittmenge_df[funk] - schnittmenge_df['y'])
              
         valGraph_ds  = self.passendeBereicheHervorheben(berech,ideal_df,train_df,ergebnis,test_df)
+        TestSatz.abweichungstabelle = valGraph_ds
         self.graphenZeichnen(schnittmenge_df, valGraph_ds,test_df,train_df,ergebnis,ideal_df)
         
         
@@ -195,9 +198,9 @@ class TestSatz(Datensatz):
                     if 0: print(f"Abweichungen ideal:{IdeAbw} und test:{ValAbw}")
                     if 0: print(f"Max&Min erlaubte Abweichungen wären: {maxAbs} // {minAbs}" )
                     if erf:
-                        if 0: print(f"ja für y_ideal_{idF}")
+                        if 1: print(f"ja für y_ideal_{idF} mit der Abweichung {ValAbw}")
                         
-                        data_row = { 'x':x, 'y':y, 'idF':idF }
+                        data_row = { 'x':x, 'y':y, 'idF':idF  } ########################################## change
                         data_row_ds = pd.DataFrame([data_row])
                         valGraph_ds = valGraph_ds.dropna(axis=1, how='all')
                         data_row_ds = data_row_ds.dropna(axis=1, how='all')
@@ -209,7 +212,7 @@ class TestSatz(Datensatz):
             print(valGraph_ds)
             condi = valGraph_ds['idF'] == 'y11'
             print(valGraph_ds[condi])
-            
+             
         return valGraph_ds
        
     
@@ -285,23 +288,21 @@ class ProgrammStart:
     id_funk_pfad        = 'C:/Users/Michael/OneDrive/IU Fernuni/IU Python/Spyder Quellcode/ideal.csv'
     train_funk_pfad     = 'C:/Users/Michael/OneDrive/IU Fernuni/IU Python/Spyder Quellcode/train.csv'
     test_funk_pfad      = 'C:/Users/Michael/OneDrive/IU Fernuni/IU Python/Spyder Quellcode/test.csv'
-    
+    daten_quelle_sql    = False
     
     def __init__(self):
         self.idealeFunktionen    = IdealSatz(self.id_funk_pfad, pd)
         self.trainFunktionen     = TrainSatz(self.train_funk_pfad, pd)
         self.valFunktionen       = TestSatz(self.test_funk_pfad, pd)
-        self.ideal_df           = self.idealeFunktionen.loadData()
-        self.train_df           = self.trainFunktionen.loadData()
-        self.test_df            = self.valFunktionen.loadData()
+        if ProgrammStart.daten_quelle_sql == False:
+            self.ideal_df           = self.idealeFunktionen.loadData()
+            self.train_df           = self.trainFunktionen.loadData()
+            self.test_df            = self.valFunktionen.loadData()
         
-    def takeDataFromDatabase(self):
-        self.idealeFunktionen    = IdealSatz(self.id_funk_pfad, pd)
-        self.trainFunktionen     = TrainSatz(self.train_funk_pfad, pd)
-        self.valFunktionen       = TestSatz(self.test_funk_pfad, pd)
-        self.ideal_df           = self.idealeFunktionen.loadData()
-        self.train_df           = self.trainFunktionen.loadData()
-        self.test_df            = self.valFunktionen.loadData()
+    def takeDataFromDatabase(self): 
+        self.ideal_df           = self.datenbankInhalteAbrufen("ideal")  
+        self.train_df           = self.datenbankInhalteAbrufen("train")
+        self.test_df            = self.datenbankInhalteAbrufen("test")
 
 
     def datenbankHandler(self,funk_ds, table_name):
@@ -312,20 +313,15 @@ class ProgrammStart:
             
             if table_name == "ideal":
                 funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
-                print(table_name)
             elif table_name == "train":
                 funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
-                print(table_name)
             elif table_name == "test":
                 funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
-                print(table_name)
             elif table_name == "validierung":
                 funk_ds.to_sql(table_name, verbi, if_exists='replace', index=False)
-                print(table_name)
             else:
                 table_name = "default"
                 funk_ds.to_sql('default', verbi, if_exists='replace', index=False)         
-                print(table_name)
                 
                 
             verbi.commit()
@@ -366,22 +362,30 @@ class ProgrammStart:
         
         
 
+
+
 Programm = ProgrammStart()
+if Programm.daten_quelle_sql == True: 
+    Programm.takeDataFromDatabase()
+Programm.takeDataFromDatabase()
 Programm.berechnungenDurchführen()
 
+
+Programm.bestenFunktionen = {key.replace('train_', ''): value.replace('_id', '')for key, value in Programm.bestenFunktionen.items()}
+Programm.bestenFunktionen = {value: key for key, value in Programm.bestenFunktionen.items()}
+print(Programm.bestenFunktionen)
+TestSatz.abweichungstabelle['trF'] = TestSatz.abweichungstabelle['idF'].map(Programm.bestenFunktionen)
+print(TestSatz.abweichungstabelle)
 
 try:
     Programm.datenbankHandler(Programm.ideal_df,'ideal')
     Programm.datenbankHandler(Programm.train_df,'train')
     Programm.datenbankHandler(Programm.test_df,'test')
     
-    df1 = Programm.datenbankInhalteAbrufen('ideal')
-    df2 = Programm.datenbankInhalteAbrufen('train')
-    df3 = Programm.datenbankInhalteAbrufen('test')
-    print(df1)
-    print(df2)
-    print(df3)
+    
     #print(Programm.bestenFunktionen) --> {'train_y1': 'y36_id', 'train_y2': 'y11_id', 'train_y3': 'y2_id', 'train_y4': 'y33_id'}
+    
+
 except SQLiteError  as e:
     print(f"f'Fehler beim komminizieren mit der der SQLite Datei: {e}'")
 
